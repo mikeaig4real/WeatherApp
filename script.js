@@ -18,18 +18,28 @@ class INFO {
         const fetchIp = await fetch('https://api.ipify.org?format=json');
         const jsonIp = await fetchIp.json();
         const ip = jsonIp.ip;
-        const fetchLoc = await fetch(`http://ip-api.com/json/${ip}`);
-        const jsonLoc = await fetchLoc.json();
-        const [conti, count] = jsonLoc.timezone.split('/');
-        const fetchWet = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${jsonLoc.lat}&longitude=${jsonLoc.lon}&hourly=temperature_2m,relativehumidity_2m,dewpoint_2m,precipitation&daily=temperature_2m_max,temperature_2m_min&current_weather=true&timezone=${conti}%2F${count}`);
-        const jsonWet = await fetchWet.json();
-        const { country, city } = jsonLoc;
-        const { current_weather, daily,hourly,hourly_units } = jsonWet;
+        const locale = await this.getLocale(ip);
+        const wetInfo = await this.getWet(locale);
+        console.log(wetInfo);
+        const { current_weather, daily,hourly,hourly_units } = wetInfo;
         const { windspeed, temperature } = current_weather;
         const { dewpoint_2m,precipitation,relativehumidity_2m } = hourly;
         const { time, temperature_2m_min, temperature_2m_max } = daily;
-        console.log(jsonWet);
-        return [country,city,windspeed+'km/h',dewpoint_2m[0]+hourly_units.dewpoint_2m,precipitation[0]+hourly_units.precipitation,relativehumidity_2m[0]+hourly_units.relativehumidity_2m,temperature+hourly_units.temperature_2m,time.map(time=> new Date(time).toString().slice(0,3)),temperature_2m_min,temperature_2m_max];
+        return [locale[2],locale[3],windspeed+'km/h',dewpoint_2m[0]+hourly_units.dewpoint_2m,precipitation[0]+hourly_units.precipitation,relativehumidity_2m[0]+hourly_units.relativehumidity_2m,temperature+hourly_units.temperature_2m,time.map(time=> new Date(time).toString().slice(0,3)),temperature_2m_min,temperature_2m_max];
+    }
+
+    async getLocale(ip) {
+        const fetchLoc = await fetch(`http://ip-api.com/json/${ip}`);
+        const jsonLoc = await fetchLoc.json();
+        const { lon, lat } = jsonLoc;
+        const [conti, count] = jsonLoc.timezone.split('/');
+        return [lat, lon, conti, count];
+    }
+
+    async getWet(locale) {
+        const fetchWet = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${locale[0]}&longitude=${locale[1]}&hourly=temperature_2m,relativehumidity_2m,dewpoint_2m,precipitation&daily=temperature_2m_max,temperature_2m_min&current_weather=true&timezone=${locale[2]}%2F${locale[3]}`);
+        const jsonWet = await fetchWet.json();
+        return jsonWet;
     }
 }
 
